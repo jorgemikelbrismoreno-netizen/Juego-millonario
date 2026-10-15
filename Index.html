@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Camino al Millón</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--text:#f1f5f9;--muted:#94a3b8;--gold:#fbbf24;--ok:#22c55e;--bad:#ef4444;--accent:#6366f1}
+@media (prefers-color-scheme: light){:root{--bg:#f1f5f9;--card:#fff;--text:#0f172a;--muted:#64748b;--gold:#d97706;--ok:#16a34a;--bad:#dc2626;--accent:#4f46e5}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;padding:16px}
+.wrap{width:100%;max-width:640px}
+.card{background:var(--card);border-radius:16px;padding:22px;box-shadow:0 4px 20px rgba(0,0,0,.2);margin-bottom:14px}
+h1{margin:0 0 6px;font-size:1.6rem}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.money{font-size:2rem;font-weight:800;color:var(--gold)}
+.small{color:var(--muted);font-size:.85rem}
+.bar{height:10px;background:rgba(148,163,184,.25);border-radius:6px;overflow:hidden;margin-top:10px}
+.bar>div{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));width:0;transition:width .5s}
+.q{font-size:1.2rem;line-height:1.5;margin:8px 0 16px}
+.bet label{display:block;font-weight:600;margin-bottom:8px}
+.bet-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input[type=number]{padding:10px;border-radius:10px;border:2px solid var(--accent);background:transparent;color:var(--text);font-size:1.1rem;width:150px}
+button{cursor:pointer;border:none;border-radius:10px;padding:10px 14px;font-weight:700;font-size:1rem;color:#fff;background:var(--accent)}
+button.q-btn{background:rgba(148,163,184,.25);color:var(--text);padding:8px 10px;font-size:.85rem}
+button:disabled{opacity:.5;cursor:not-allowed}
+.tf{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.tf button{padding:16px;font-size:1.2rem}
+.v{background:var(--ok)}.f{background:var(--bad)}
+.fb{margin-top:14px;padding:14px;border-radius:12px;font-weight:600;display:none;line-height:1.4}
+.fb.ok{background:rgba(34,197,94,.18);border:2px solid var(--ok);display:block}
+.fb.bad{background:rgba(239,68,68,.18);border:2px solid var(--bad);display:block}
+.next{margin-top:12px;width:100%;display:none}
+.center{text-align:center}
+.big{font-size:3rem;margin:0}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div id="start" class="card center">
+  <p class="big">💰</p>
+  <h1>Camino al Millón</h1>
+  <p>Empiezas con <b>$100</b>. En cada pregunta de verdadero o falso apuestas la cantidad que quieras.</p>
+  <p>✅ Si aciertas, <b>duplicas</b> lo apostado.<br>❌ Si fallas, <b>pierdes</b> lo apostado.</p>
+  <p>Meta: llegar a <b>$1,000,000</b> sin quedarte en $0.</p>
+  <button onclick="startGame()">¡Empezar!</button>
+</div>
+
+<div id="game" class="hidden">
+  <div class="card">
+    <div class="top">
+      <div><div class="small">Tu dinero</div><div class="money" id="money">$100</div></div>
+      <div class="small" id="progress">Pregunta 1 de 18</div>
+    </div>
+    <div class="bar"><div id="bar"></div></div>
+    <div class="small" style="margin-top:6px">Meta: $1,000,000</div>
+  </div>
+
+  <div class="card">
+    <div class="q" id="question"></div>
+    <div class="bet" id="betBox">
+      <label for="bet">¿Cuánto apuestas?</label>
+      <div class="bet-row">
+        <input type="number" id="bet" min="1" step="1" value="10">
+        <button class="q-btn" onclick="setBet(0.25)">25%</button>
+        <button class="q-btn" onclick="setBet(0.5)">50%</button>
+        <button class="q-btn" onclick="setBet(1)">Todo</button>
+      </div>
+      <div class="small" id="betErr" style="color:var(--bad);margin-top:6px"></div>
+    </div>
+    <div class="tf" id="tf">
+      <button class="v" onclick="answer(true)">✔ Verdadero</button>
+      <button class="f" onclick="answer(false)">✘ Falso</button>
+    </div>
+    <div class="fb" id="fb"></div>
+    <button class="next" id="next" onclick="nextQ()">Siguiente →</button>
+  </div>
+</div>
+
+<div id="end" class="card center hidden">
+  <p class="big" id="endIcon"></p>
+  <h1 id="endTitle"></h1>
+  <p id="endText"></p>
+  <button onclick="startGame()">Jugar de nuevo</button>
+</div>
+
+</div>
+
+<script>
+const ALL = [
+ ["Un armisticio es un tratado de paz definitivo que resuelve todas las causas de un conflicto.",false,"Es solo un acuerdo temporal para detener los combates."],
+ ["El imperialismo consiste en la dominación económica, política y militar de potencias fuertes sobre otros territorios.",true,"Es el sistema global de explotación y expansión colonial."],
+ ["La Belle Époque se caracterizó por ser una época de optimismo, paz y desarrollo en Europa antes de 1914.",true,"Fue el periodo de prosperidad previo a la Primera Guerra Mundial."],
+ ["El nacionalismo colonial defendía que todas las culturas tenían el mismo derecho a gobernar el mundo.",false,"Se usaba para exaltar la superioridad de la propia patria y justificar la expansión."],
+ ["El patriotismo es el sentimiento de amor y lealtad hacia la propia nación.",true,"Es el apego e identificación con el propio país."],
+ ["La aculturación ocurre cuando un pueblo colonizado logra imponer sus costumbres a la potencia invasora.",false,"Es al revés; la población nativa pierde su cultura al adoptar la del dominador."],
+ ["La colonización es el proceso físico de ocupar, poblar y controlar un territorio extranjero.",true,"Implica el asentamiento y establecimiento de control en la nueva tierra."],
+ ["La emigración colonial se refiere a la llegada de trabajadores nativos a las ciudades de la potencia europea.",false,"Es la salida de ciudadanos desde la potencia hacia las colonias."],
+ ["La inmigración en el contexto colonial implica la entrada y establecimiento de personas en un nuevo territorio.",true,"Es el flujo de personas que llegan a establecerse en la colonia."],
+ ["La segregación permitía que los colonizadores y los nativos compartieran los mismos derechos y espacios públicos.",false,"Era la separación estricta (social y racial) para mantener el control."],
+ ["La demografía ayudaba a las potencias a justificar la expansión colonial debido al exceso de población en Europa.",true,"El estudio de la población servía para argumentar que necesitaban más espacio."],
+ ["La diplomacia se utilizaba exclusivamente para declarar guerras inmediatas sin dialogar.",false,"Son las negociaciones políticas para resolver conflictos o repartirse territorios."],
+ ["Una colonia mantiene su total soberanía y autogobierno frente a la potencia extranjera.",false,"Es un territorio completamente dominado y administrado por el país extranjero."],
+ ["La hegemonía significa que una nación tiene la supremacía o control absoluto sobre otras.",true,"Representa el dominio político y económico de una potencia en una región."],
+ ["La convergencia en el imperialismo ocurre cuando los intereses de dos potencias chocan inevitablemente en guerra.",false,"Significa la unión o coincidencia de intereses económicos o políticos compartidos."],
+ ["El término bélico está relacionado de forma directa con los tratados comerciales pacíficos.",false,"Se refiere estrictamente a la guerra y los asuntos militares."],
+ ["En un protectorado, la potencia extranjera controla las riquezas y la política exterior, pero respeta el gobierno local.",true,"Se mantiene una fachada de gobierno nativo bajo la tutela de la potencia."],
+ ["Un país beligerante es aquel que se mantiene completamente neutral y fuera de un conflicto armado.",false,"Es una nación o grupo que participa activamente en la guerra."]
+];
+const GOAL = 1000000;
+let qs, idx, money, answered;
+const $ = id => document.getElementById(id);
+const fmt = n => "$" + n.toLocaleString("en-US");
+
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function startGame(){
+  qs = shuffle(ALL); idx = 0; money = 100;
+  $("start").classList.add("hidden"); $("end").classList.add("hidden"); $("game").classList.remove("hidden");
+  render();
+}
+function render(){
+  answered = false;
+  $("money").textContent = fmt(money);
+  $("progress").textContent = `Pregunta ${idx+1} de ${qs.length}`;
+  $("bar").style.width = Math.min(100, money/GOAL*100) + "%";
+  $("question").textContent = qs[idx][0];
+  $("bet").value = Math.max(1, Math.floor(money/10));
+  $("bet").max = money;
+  $("betErr").textContent = "";
+  $("fb").className = "fb"; $("next").style.display = "none";
+  $("tf").style.display = "grid"; $("betBox").style.display = "block";
+}
+function setBet(p){ $("bet").value = Math.max(1, Math.floor(money*p)); }
+function answer(choice){
+  if(answered) return;
+  const bet = Math.floor(Number($("bet").value));
+  if(!bet || bet < 1 || bet > money){ $("betErr").textContent = `Apuesta entre $1 y ${fmt(money)}.`; return; }
+  answered = true;
+  const [, correct, expl] = qs[idx];
+  const win = choice === correct;
+  money += win ? bet : -bet;
+  const fb = $("fb");
+  fb.className = "fb " + (win ? "ok" : "bad");
+  fb.innerHTML = (win ? `✅ ¡Correcto! Ganaste ${fmt(bet)}.` : `❌ Incorrecto. Perdiste ${fmt(bet)}.`) +
+    `<br><span style="font-weight:400">Era <b>${correct ? "Verdadero" : "Falso"}</b>. ${expl}</span>`;
+  $("money").textContent = fmt(money);
+  $("bar").style.width = Math.min(100, money/GOAL*100) + "%";
+  $("tf").style.display = "none"; $("betBox").style.display = "none";
+  if(money <= 0 || money >= GOAL || idx === qs.length-1){
+    $("next").textContent = "Ver resultado →";
+  } else $("next").textContent = "Siguiente →";
+  $("next").style.display = "block";
+}
+function nextQ(){
+  if(money <= 0 || money >= GOAL || idx === qs.length-1){ return finish(); }
+  idx++; render();
+}
+function finish(){
+  $("game").classList.add("hidden"); $("end").classList.remove("hidden");
+  if(money >= GOAL){
+    $("endIcon").textContent="🏆"; $("endTitle").textContent="¡Eres millonario!";
+    $("endText").textContent=`Llegaste a ${fmt(money)}. ¡Meta cumplida!`;
+  } else if(money <= 0){
+    $("endIcon").textContent="💸"; $("endTitle").textContent="Te quedaste en $0";
+    $("endText").textContent="Perdiste todo. ¡Intenta de nuevo con apuestas más prudentes!";
+  } else {
+    $("endIcon").textContent="📚"; $("endTitle").textContent="Se acabaron las preguntas";
+    $("endText").textContent=`Terminaste con ${fmt(money)}. No llegaste al millón, pero sobreviviste. ¡Inténtalo otra vez!`;
+  }
+}
+</script>
+</body>
+</html>
